@@ -1,3 +1,4 @@
+```mermaid
 flowchart TD
     subgraph User["User (Recruiter)"]
         Browser["Web Browser (HTML/CSS/JS)"]
@@ -32,3 +33,4 @@ flowchart TD
     Backend --> Data
     Frontend -->|Links| GH
     Backend --> Host
+```

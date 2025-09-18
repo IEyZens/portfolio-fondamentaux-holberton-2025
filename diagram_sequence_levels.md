@@ -1,3 +1,4 @@
+```mermaid
 sequenceDiagram
     participant U as User
     participant B as Browser (HTML/JS)
@@ -12,3 +13,4 @@ sequenceDiagram
     D-->>F: Returns JSON data
     F-->>B: Sends player JSON
     B-->>U: Calculates total XP and displays level
+```
