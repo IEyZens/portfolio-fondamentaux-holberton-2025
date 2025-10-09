@@ -4,9 +4,9 @@ info:
   version: "1.0.0"
   description: |
     RESTful API for the Holberton RPG Portfolio project.
-    Manage players, quests, and skills as if you were in an RPG:
-    earn XP, unlock new abilities, and level up your coding adventure!
 
+    Manage players, quests, and skills as if you were in an RPG world —
+    earn XP, unlock new abilities, and level up your coding adventure!
   license:
     name: MIT License
 
@@ -16,15 +16,15 @@ servers:
 
 tags:
   - name: Auth
-    description: Authentication and user management
+    description: Authentication and token management
   - name: Players
-    description: Player creation and management
+    description: Player creation and management (admin for creation)
   - name: Quests
     description: Quest management (admin only for write operations)
   - name: Skills
     description: Skill management (admin only for write operations)
   - name: Progress
-    description: Player progression and statistics
+    description: Player progression overview
 
 components:
   securitySchemes:
@@ -57,93 +57,114 @@ components:
       type: object
       properties:
         id: { type: integer, example: 5 }
-        name: { type: string, example: "Git Mastery" }
-        level: { type: integer, example: 3 }
+        name: { type: string, example: "Flask Wizardry" }
+        level: { type: integer, example: 4 }
 
 paths:
   # =====================================================
-  # AUTHENTICATION
+  # AUTH
   # =====================================================
-
   /auth/register:
     post:
       tags: [Auth]
-      summary: Register a new user
-      description: Create a new player account in the database.
+      summary: Register a new player
+      description: Create a new user account in the RPG system.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [name, password, class_name]
               properties:
                 name: { type: string, example: "Thomas" }
                 password: { type: string, example: "thomas123" }
                 class_name: { type: string, example: "Apprentice Mage" }
       responses:
-        "201":
-          description: User successfully registered
-        "400":
-          description: Missing required fields or username already exists
+        "201": { description: User successfully registered }
+        "400": { description: Missing fields or name already exists }
 
   /auth/login:
     post:
       tags: [Auth]
-      summary: Log in a user and issue JWT tokens
-      description: Validate credentials and return access and refresh tokens.
+      summary: Log in and receive JWT tokens
+      description: Authenticate an existing player and obtain access and refresh tokens.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [name, password]
               properties:
                 name: { type: string, example: "Thomas Roncin" }
                 password: { type: string, example: "thomas123" }
       responses:
         "200":
-          description: Authentication successful
-        "401":
-          description: Invalid username or password
-
-  /auth/refresh:
-    post:
-      tags: [Auth]
-      summary: Refresh access token
-      description: Generate a new access token using a valid refresh token.
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: New access token issued
+          description: Successful authentication
+          content:
+            application/json:
+              example:
+                success: true
+                access_token: "<JWT_ACCESS_TOKEN>"
+                refresh_token: "<JWT_REFRESH_TOKEN>"
+                user:
+                  id: 2
+                  name: "Thomas Roncin"
+                  class_name: "Backend Wizard"
+                  is_admin: false
+        "401": { description: Invalid credentials }
 
   /auth/me:
     get:
       tags: [Auth]
-      summary: Get current authenticated user
-      description: Retrieve the profile of the logged-in user.
+      summary: Retrieve current authenticated user
       security:
         - BearerAuth: []
       responses:
         "200":
-          description: Current user information
-        "401":
-          description: Unauthorized or invalid token
+          description: User profile retrieved
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  id: 2
+                  name: "Thomas Roncin"
+                  class_name: "Backend Wizard"
+                  level: 5
+                  xp: 450
+                  is_admin: false
+        "401": { description: Unauthorized }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh JWT access token
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Token successfully refreshed
+          content:
+            application/json:
+              example:
+                success: true
+                access_token: "<NEW_ACCESS_TOKEN>"
+        "401": { description: Invalid or expired token }
 
   # =====================================================
   # PLAYERS
   # =====================================================
-
   /api/players:
     get:
       tags: [Players]
       summary: Get all players
-      description: Retrieve the list of all registered players. Authentication required.
       security:
         - BearerAuth: []
       responses:
         "200":
-          description: List of players
+          description: List of all players
           content:
             application/json:
               schema:
@@ -152,82 +173,90 @@ paths:
 
     post:
       tags: [Players]
-      summary: Create a new player
-      description: Public endpoint to create a new player without authentication.
+      summary: Create a new player (admin only)
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [name, password, class_name]
               properties:
-                name: { type: string, example: "New Hero" }
-                class_name: { type: string, example: "Novice Knight" }
+                name: { type: string, example: "New Adventurer" }
+                password: { type: string, example: "newpass123" }
+                class_name: { type: string, example: "Frontend Knight" }
+                level: { type: integer, example: 1 }
+                xp: { type: integer, example: 0 }
+                is_admin: { type: boolean, example: false }
       responses:
         "201":
           description: Player successfully created
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  id: 4
+                  message: "Player created successfully"
+        "403": { description: Admin privileges required }
 
   /api/players/{id}:
     get:
       tags: [Players]
       summary: Get a player by ID
-      description: Retrieve a player's information by their unique ID.
       security:
         - BearerAuth: []
       parameters:
-        - name: id
-          in: path
+        - in: path
+          name: id
           required: true
           schema: { type: integer }
       responses:
-        "200": { description: Player data retrieved successfully }
+        "200": { description: Player data retrieved }
         "404": { description: Player not found }
 
     put:
       tags: [Players]
-      summary: Update player information
-      description: Update player details (only self or admin allowed).
+      summary: Update player (self or admin)
       security:
         - BearerAuth: []
       parameters:
-        - name: id
-          in: path
+        - in: path
+          name: id
           required: true
           schema: { type: integer }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/Player"
+            schema: { $ref: "#/components/schemas/Player" }
       responses:
-        "200": { description: Player successfully updated }
-        "403": { description: Forbidden or unauthorized }
+        "200": { description: Player updated }
+        "403": { description: Unauthorized }
 
     delete:
       tags: [Players]
-      summary: Delete a player
-      description: Delete a player account (only self or admin allowed).
+      summary: Delete player (self or admin)
       security:
         - BearerAuth: []
       parameters:
-        - name: id
-          in: path
+        - in: path
+          name: id
           required: true
           schema: { type: integer }
       responses:
-        "200": { description: Player successfully deleted }
-        "403": { description: Forbidden or unauthorized }
+        "200": { description: Player deleted }
+        "403": { description: Unauthorized }
 
   # =====================================================
   # QUESTS
   # =====================================================
-
   /api/quests:
     get:
       tags: [Quests]
       summary: Get all quests
-      description: Retrieve all quests from the database.
       security:
         - BearerAuth: []
       responses:
@@ -241,81 +270,59 @@ paths:
 
     post:
       tags: [Quests]
-      summary: Create a new quest
-      description: Add a new quest (admin only).
+      summary: Create a new quest (admin only)
       security:
         - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/Quest"
+            schema: { $ref: "#/components/schemas/Quest" }
       responses:
-        "201": { description: Quest successfully created }
+        "201": { description: Quest created successfully }
         "403": { description: Admin privileges required }
 
   /api/quests/{id}:
-    get:
-      tags: [Quests]
-      summary: Get a quest by ID
-      description: Retrieve details of a specific quest.
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: integer }
-      responses:
-        "200": { description: Quest retrieved successfully }
-        "404": { description: Quest not found }
-
     put:
       tags: [Quests]
-      summary: Update a quest
-      description: Modify quest information (admin only).
+      summary: Update quest (admin only)
       security:
         - BearerAuth: []
       parameters:
-        - name: id
-          in: path
+        - in: path
+          name: id
           required: true
           schema: { type: integer }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/Quest"
+            schema: { $ref: "#/components/schemas/Quest" }
       responses:
-        "200": { description: Quest successfully updated }
-        "403": { description: Forbidden or unauthorized }
+        "200": { description: Quest updated }
+        "403": { description: Unauthorized }
 
     delete:
       tags: [Quests]
-      summary: Delete a quest
-      description: Remove a quest from the database (admin only).
+      summary: Delete quest (admin only)
       security:
         - BearerAuth: []
       parameters:
-        - name: id
-          in: path
+        - in: path
+          name: id
           required: true
           schema: { type: integer }
       responses:
-        "200": { description: Quest successfully deleted }
-        "403": { description: Forbidden or unauthorized }
+        "200": { description: Quest deleted }
+        "403": { description: Unauthorized }
 
   # =====================================================
   # SKILLS
   # =====================================================
-
   /api/skills:
     get:
       tags: [Skills]
       summary: Get all skills
-      description: Retrieve all available skills.
       security:
         - BearerAuth: []
       responses:
@@ -329,98 +336,76 @@ paths:
 
     post:
       tags: [Skills]
-      summary: Create a new skill
-      description: Add a new skill (admin only).
+      summary: Create a new skill (admin only)
       security:
         - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/Skill"
+            schema: { $ref: "#/components/schemas/Skill" }
       responses:
-        "201": { description: Skill successfully created }
-        "403": { description: Forbidden or unauthorized }
+        "201": { description: Skill created successfully }
+        "403": { description: Unauthorized }
 
   /api/skills/{id}:
-    get:
-      tags: [Skills]
-      summary: Get a skill by ID
-      description: Retrieve details for a specific skill.
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: integer }
-      responses:
-        "200": { description: Skill retrieved successfully }
-        "404": { description: Skill not found }
-
     put:
       tags: [Skills]
-      summary: Update a skill
-      description: Modify a skill (admin only).
+      summary: Update a skill (admin only)
       security:
         - BearerAuth: []
       parameters:
-        - name: id
-          in: path
+        - in: path
+          name: id
           required: true
           schema: { type: integer }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/Skill"
+            schema: { $ref: "#/components/schemas/Skill" }
       responses:
-        "200": { description: Skill successfully updated }
-        "403": { description: Forbidden or unauthorized }
+        "200": { description: Skill updated }
+        "403": { description: Unauthorized }
 
     delete:
       tags: [Skills]
-      summary: Delete a skill
-      description: Remove a skill (admin only).
+      summary: Delete a skill (admin only)
       security:
         - BearerAuth: []
       parameters:
-        - name: id
-          in: path
+        - in: path
+          name: id
           required: true
           schema: { type: integer }
       responses:
-        "200": { description: Skill successfully deleted }
-        "403": { description: Forbidden or unauthorized }
+        "200": { description: Skill deleted }
+        "403": { description: Unauthorized }
 
   # =====================================================
   # PROGRESS
   # =====================================================
-
   /api/progress/{player_id}:
     get:
       tags: [Progress]
       summary: Get player progress
-      description: Retrieve a summary of a player's progress and total XP.
       security:
         - BearerAuth: []
       parameters:
-        - name: player_id
-          in: path
+        - in: path
+          name: player_id
           required: true
           schema: { type: integer }
       responses:
         "200":
-          description: Player progress data retrieved
+          description: Player progression retrieved
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  player_name: { type: string, example: "Thomas Roncin" }
-                  total_quests_completed: { type: integer, example: 5 }
-                  total_xp_gained: { type: integer, example: 500 }
-                  level: { type: integer, example: 3 }
+              example:
+                success: true
+                data:
+                  player_name: "Thomas Roncin"
+                  total_quests_completed: 5
+                  total_xp_gained: 500
+                  level: 3
         "404": { description: Player not found }

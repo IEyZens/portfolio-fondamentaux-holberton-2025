@@ -43,12 +43,20 @@ def get_player(player_id):
 
 
 @api_bp.route('/players', methods=['POST'])
+@admin_required
 def create_player():
-    """Create a new player (public endpoint)."""
+    """Create a new player (admin only)."""
     data = request.get_json()
-    if not data or "name" not in data or "class_name" not in data:
-        return error_response("Missing required fields: name, class_name", 400)
 
+    # Validate input
+    if not data or "name" not in data or "class_name" not in data or "password" not in data:
+        return error_response("Missing required fields: name, class_name, password", 400)
+
+    # Prevent duplicates
+    if Player.query.filter_by(name=data["name"]).first():
+        return error_response("A player with this name already exists", 400)
+
+    # Create player and set password hash
     new_player = Player(
         name=data["name"],
         class_name=data["class_name"],
@@ -56,10 +64,14 @@ def create_player():
         xp=data.get("xp", 0),
         is_admin=data.get("is_admin", False)
     )
+    new_player.set_password(data["password"])
+
     db.session.add(new_player)
     db.session.commit()
 
-    return success_response({"message": "Player created successfully", "id": new_player.id}, 201)
+    return success_response(
+        {"message": "Player created successfully", "id": new_player.id}, 201
+    )
 
 
 @api_bp.route('/players/<int:player_id>', methods=['PUT'])

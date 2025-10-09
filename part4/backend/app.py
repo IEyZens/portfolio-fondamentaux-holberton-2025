@@ -43,7 +43,20 @@ def create_app():
 
     # Load YAML directly without merging Flasgger's 2.0 defaults
     swagger_template = load_swagger()
-    swagger = Swagger(app, template=swagger_template, merge=False)
+    swagger = Swagger(app, template=swagger_template, merge=False, config={
+        "headers": [],
+        "specs": [
+            {
+                "endpoint": 'apispec_1',
+                "route": '/apispec_1.json',
+                "rule_filter": lambda rule: True,
+                "model_filter": lambda tag: True,
+            }
+        ],
+        "static_url_path": "/flasgger_static",
+        "swagger_ui": True,
+        "specs_route": "/apidocs/"
+    })
 
     # 🧠 Watcher to hot-reload YAML
     class SwaggerFileWatcher(FileSystemEventHandler):
